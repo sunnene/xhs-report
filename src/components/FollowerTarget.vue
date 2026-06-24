@@ -1,6 +1,9 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import type { Note } from '@/types'
+import html2canvas from 'html2canvas'
+import jsPDF from 'jspdf'
+import TargetSummary from './TargetSummary.vue'
 
 const props = defineProps<{
   notes: Note[]
@@ -13,6 +16,7 @@ const additionalFollowers = ref<number>(0)
 const currentFollowers = ref<number>(0)
 const initialFollowers = ref<number>(0)
 const showWeekly = ref(true)
+const reportRef = ref<HTMLElement | null>(null)
 
 function getWeeklyData(notes: Note[]) {
   const weeks: Record<string, number> = {}
@@ -107,16 +111,64 @@ const areaPath = computed(() => {
 function toggleWeekly() {
   showWeekly.value = !showWeekly.value
 }
+
+async function exportAsPDF() {
+  if (!reportRef.value) return
+  
+  const loading = ref(true)
+  try {
+    const canvas = await html2canvas(reportRef.value, {
+      scale: 2,
+      useCORS: true,
+      logging: false
+    })
+    
+    const imgData = canvas.toDataURL('image/png')
+    const pdf = new jsPDF({
+      orientation: canvas.width > canvas.height ? 'landscape' : 'portrait',
+      unit: 'px',
+      format: [canvas.width, canvas.height]
+    })
+    
+    pdf.addImage(imgData, 'PNG', 0, 0, canvas.width, canvas.height)
+    pdf.save(`涨粉目标拆解报告_${new Date().toLocaleDateString('zh-CN').replace(/\//g, '-')}.pdf`)
+  } catch (error) {
+    console.error('导出PDF失败:', error)
+    alert('导出PDF失败，请重试')
+  } finally {
+    loading.value = false
+  }
+}
+
+async function exportAsImage() {
+  if (!reportRef.value) return
+  
+  try {
+    const canvas = await html2canvas(reportRef.value, {
+      scale: 2,
+      useCORS: true,
+      logging: false
+    })
+    
+    const link = document.createElement('a')
+    link.download = `涨粉目标拆解报告_${new Date().toLocaleDateString('zh-CN').replace(/\//g, '-')}.png`
+    link.href = canvas.toDataURL('image/png')
+    link.click()
+  } catch (error) {
+    console.error('导出图片失败:', error)
+    alert('导出图片失败，请重试')
+  }
+}
 </script>
 
 <template>
-  <div class="bg-white rounded-xl shadow-sm p-6">
+  <div ref="reportRef" class="bg-white rounded-xl shadow-sm p-6">
     <div class="flex items-center justify-between mb-6">
       <div class="flex items-center gap-2">
         <span class="text-xl">📈</span>
         <h3 class="text-lg font-semibold text-gray-800">涨粉目标拆解</h3>
       </div>
-      <div class="flex items-center gap-6">
+      <div class="flex items-center gap-4">
         <div class="text-center">
           <div class="text-sm text-gray-500">当前粉丝数</div>
           <div class="flex items-center gap-1">
@@ -131,6 +183,22 @@ function toggleWeekly() {
         <div class="text-center">
           <div class="text-sm text-gray-500">累计涨粉</div>
           <div class="text-xl font-bold text-green-600">{{ totalFollowers.toLocaleString() }}</div>
+        </div>
+        <div class="flex items-center gap-2">
+          <button 
+            @click="exportAsPDF"
+            class="flex items-center gap-1 px-3 py-2 bg-red-500 text-white rounded-lg text-sm hover:bg-red-600 transition-colors"
+          >
+            <span>📄</span>
+            <span>导出PDF</span>
+          </button>
+          <button 
+            @click="exportAsImage"
+            class="flex items-center gap-1 px-3 py-2 bg-blue-500 text-white rounded-lg text-sm hover:bg-blue-600 transition-colors"
+          >
+            <span>🖼️</span>
+            <span>导出图片</span>
+          </button>
         </div>
       </div>
     </div>
@@ -420,6 +488,14 @@ function toggleWeekly() {
           </div>
         </div>
       </div>
+      
+      <TargetSummary 
+        :weekly-stats="weeklyStats"
+        :monthly-stats="monthlyStats"
+        :yearly-stats="yearlyStats"
+        :current-followers="currentFollowers"
+        :initial-followers="initialFollowers"
+      />
     </div>
   </div>
 </template>

@@ -9,5 +9,5 @@ export default defineConfig({
       '@': resolve(__dirname, 'src')
     }
   },
-  base: '/xhs-report/'
+  base: './'
 })
