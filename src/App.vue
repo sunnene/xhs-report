@@ -2,6 +2,8 @@
 import { ref, computed } from 'vue'
 import type { Note, OperationAdviceType } from '@/types'
 import { mockNotes } from '@/data/mockData'
+import html2canvas from 'html2canvas'
+import jsPDF from 'jspdf'
 import { 
   calculateStats, 
   calculateContentStats, 
@@ -23,6 +25,7 @@ import FollowerTarget from '@/components/FollowerTarget.vue'
 import CommentQuality from '@/components/CommentQuality.vue'
 import DataUpload from '@/components/DataUpload.vue'
 import TagAnalysis from '@/components/TagAnalysis.vue'
+import TargetSummary from '@/components/TargetSummary.vue'
 
 const activeBoard = ref<'dashboard' | 'target'>('dashboard')
 
@@ -31,6 +34,7 @@ const targetNotes = ref<Note[]>([])
 
 const customTotalFollowers = ref<number | null>(null)
 const customNewFollowers = ref<number | null>(null)
+const reportRef = ref<HTMLElement | null>(null)
 
 const baseStats = computed(() => calculateStats(dashboardNotes.value))
 const stats = computed(() => ({
@@ -70,6 +74,53 @@ function getTargetDateRange() {
   if (dates.length === 0) return '请上传数据'
   const sortedDates = [...dates].sort()
   return `${sortedDates[0]} - ${sortedDates[sortedDates.length - 1]}`
+}
+
+async function exportAsPDF() {
+  if (!reportRef.value) return
+  
+  try {
+    const canvas = await html2canvas(reportRef.value, {
+      scale: 2,
+      useCORS: true,
+      logging: false,
+      scrollY: -window.scrollY
+    })
+    
+    const imgData = canvas.toDataURL('image/png')
+    const pdf = new jsPDF({
+      orientation: canvas.width > canvas.height ? 'landscape' : 'portrait',
+      unit: 'px',
+      format: [canvas.width, canvas.height]
+    })
+    
+    pdf.addImage(imgData, 'PNG', 0, 0, canvas.width, canvas.height)
+    pdf.save(`${activeBoard.value === 'dashboard' ? '运营周报看板' : '目标拆解看板'}_${new Date().toLocaleDateString('zh-CN').replace(/\//g, '-')}.pdf`)
+  } catch (error) {
+    console.error('导出PDF失败:', error)
+    alert('导出PDF失败，请重试')
+  }
+}
+
+async function exportAsImage() {
+  if (!reportRef.value) return
+  
+  try {
+    const canvas = await html2canvas(reportRef.value, {
+      scale: 2,
+      useCORS: true,
+      logging: false,
+      scrollY: -window.scrollY
+    })
+    
+    const link = document.createElement('a')
+    link.download = `${activeBoard.value === 'dashboard' ? '运营周报看板' : '目标拆解看板'}_${new Date().toLocaleDateString('zh-CN').replace(/\//g, '-')}.png`
+    link.href = canvas.toDataURL('image/png')
+    link.click()
+  } catch (error) {
+    console.error('导出图片失败:', error)
+    alert('导出图片失败，请重试')
+  }
 }
 </script>
 
@@ -123,12 +174,26 @@ function getTargetDateRange() {
               </button>
             </div>
             <FileUpload v-if="activeBoard === 'dashboard'" @uploaded="handleDashboardFileUpload" />
+            <button 
+              @click="exportAsPDF"
+              class="flex items-center gap-1 px-3 py-2 bg-red-500 text-white rounded-lg text-sm hover:bg-red-600 transition-colors"
+            >
+              <span>📄</span>
+              <span>导出PDF</span>
+            </button>
+            <button 
+              @click="exportAsImage"
+              class="flex items-center gap-1 px-3 py-2 bg-blue-500 text-white rounded-lg text-sm hover:bg-blue-600 transition-colors"
+            >
+              <span>🖼️</span>
+              <span>导出图片</span>
+            </button>
           </div>
         </div>
       </div>
     </header>
     
-    <main class="max-w-7xl mx-auto px-4 py-6">
+    <main ref="reportRef" class="max-w-7xl mx-auto px-4 py-6">
       <template v-if="activeBoard === 'dashboard'">
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div class="lg:col-span-2 space-y-6">
@@ -191,6 +256,11 @@ function getTargetDateRange() {
           <InteractionTarget :notes="targetNotes" />
           <HotTarget :notes="targetNotes" />
           <TagAnalysis :notes="targetNotes" />
+          <TargetSummary 
+            :weekly-stats="[]"
+            :monthly-stats="[]"
+            :yearly-stats="{ actual: 0, additional: 0, total: 0, target: 0, percentage: 0 }"
+          />
           <CommentQuality />
         </div>
       </template>

@@ -1,7 +1,7 @@
 <template>
   <div class="bg-white rounded-xl shadow-sm p-6">
     <div class="flex items-center justify-between mb-6">
-      <h3 class="text-lg font-semibold text-gray-800">🏷️ 自定义标签分类分析</h3>
+      <h3 class="text-lg font-semibold text-gray-800">📊 各内容栏目数据分析</h3>
       <div v-if="tagStats.length === 0" class="text-sm text-gray-500">
         暂无标签数据，请上传包含标签列的表格
       </div>
