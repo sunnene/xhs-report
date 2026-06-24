@@ -125,7 +125,7 @@ async function exportAsImage() {
 </script>
 
 <template>
-  <div class="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
+  <div ref="reportRef" class="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
     <header class="bg-white shadow-sm sticky top-0 z-10">
       <div class="max-w-7xl mx-auto px-4 py-4">
         <div class="flex items-center justify-between">
@@ -193,7 +193,7 @@ async function exportAsImage() {
       </div>
     </header>
     
-    <main ref="reportRef" class="max-w-7xl mx-auto px-4 py-6">
+    <main class="max-w-7xl mx-auto px-4 py-6">
       <template v-if="activeBoard === 'dashboard'">
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div class="lg:col-span-2 space-y-6">
