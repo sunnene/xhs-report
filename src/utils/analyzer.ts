@@ -73,7 +73,11 @@ export function generateInsight(notes: Note[]): string {
 }
 
 export function getHotNotes(notes: Note[]): Note[] {
-  return [...notes].sort((a, b) => b.exposure - a.exposure).slice(0, 3)
+  return [...notes].sort((a, b) => {
+    const interactionA = a.like + a.comment + a.collect + a.share
+    const interactionB = b.like + b.comment + b.collect + b.share
+    return interactionB - interactionA
+  }).slice(0, 3)
 }
 
 export function generateOperationAdvice(notes: Note[]): OperationAdviceType {
