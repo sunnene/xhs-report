@@ -23,7 +23,7 @@ function getWeeklyData(notes: Note[]) {
     week,
     actual: value,
     target: weeklyTarget.value,
-    percentage: Math.min(Math.round((value / weeklyTarget.value) * 100), 100)
+    percentage: Math.round((value / weeklyTarget.value) * 100)
   }))
 }
 
@@ -45,7 +45,7 @@ function getMonthlyData(weeklyData: { week: string; actual: number }[]) {
     month,
     actual: value,
     target: monthlyTarget.value,
-    percentage: Math.min(Math.round((value / monthlyTarget.value) * 100), 100)
+    percentage: Math.round((value / monthlyTarget.value) * 100)
   }))
 }
 
@@ -54,7 +54,7 @@ function getYearlyData(monthlyData: { month: string; actual: number }[]) {
   return {
     actual: total,
     target: yearlyTarget.value,
-    percentage: Math.min(Math.round((total / yearlyTarget.value) * 100), 100)
+    percentage: Math.round((total / yearlyTarget.value) * 100)
   }
 }
 
@@ -151,7 +151,7 @@ function toggleWeekly() {
               <span class="text-gray-600">目标</span>
               <span class="text-gray-500">{{ item.target.toLocaleString() }}</span>
             </div>
-            <div class="h-2 bg-gray-200 rounded-full overflow-hidden">
+            <div class="h-2 bg-gray-200 rounded-full overflow-hidden" :style="{ minWidth: `${Math.max(item.percentage, 100)}%` }">
               <div 
                 :class="['h-full transition-all duration-500', item.percentage >= 100 ? 'bg-green-500' : 'bg-orange-500']"
                 :style="{ width: `${item.percentage}%` }"
@@ -185,7 +185,7 @@ function toggleWeekly() {
                       {{ item.percentage }}%
                     </span>
                   </div>
-                  <div class="h-4 bg-gray-200 rounded-full overflow-hidden">
+                  <div class="h-4 bg-gray-200 rounded-full overflow-hidden" :style="{ minWidth: `${Math.max(item.percentage, 100)}%` }">
                     <div 
                       :class="['h-full transition-all duration-500 flex items-center justify-end pr-2', item.percentage >= 100 ? 'bg-green-500' : 'bg-orange-500']"
                       :style="{ width: `${Math.max(item.percentage, 5)}%` }"
@@ -226,7 +226,7 @@ function toggleWeekly() {
             </div>
           </div>
           <div class="flex items-center gap-2">
-            <div class="flex-1 h-3 bg-white/30 rounded-full overflow-hidden">
+            <div class="flex-1 h-3 bg-white/30 rounded-full overflow-hidden" :style="{ minWidth: `${Math.max(yearlyStats.percentage, 100)}%` }">
               <div 
                 class="h-full bg-white transition-all duration-500"
                 :style="{ width: `${yearlyStats.percentage}%` }"

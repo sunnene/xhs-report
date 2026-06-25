@@ -25,7 +25,7 @@ function getWeeklyData(notes: Note[]) {
     week,
     actual: value,
     target: weeklyTarget.value,
-    percentage: Math.min(Math.round((value / weeklyTarget.value) * 100), 100)
+    percentage: Math.round((value / weeklyTarget.value) * 100)
   }))
 }
 
@@ -47,7 +47,7 @@ function getMonthlyData(weeklyData: { week: string; actual: number }[]) {
     month,
     actual: value,
     target: monthlyTarget.value,
-    percentage: Math.min(Math.round((value / monthlyTarget.value) * 100), 100)
+    percentage: Math.round((value / monthlyTarget.value) * 100)
   }))
 }
 
@@ -59,7 +59,7 @@ function getYearlyData(monthlyData: { month: string; actual: number }[]) {
     additional: additionalFollowers.value,
     total: total,
     target: yearlyTarget.value,
-    percentage: Math.min(Math.round((total / yearlyTarget.value) * 100), 100)
+    percentage: Math.round((total / yearlyTarget.value) * 100)
   }
 }
 
@@ -107,6 +107,87 @@ const areaPath = computed(() => {
 function toggleWeekly() {
   showWeekly.value = !showWeekly.value
 }
+
+const weeklyComparison = computed(() => {
+  if (weeklyStats.value.length < 2) return null
+  
+  const sorted = [...weeklyStats.value].sort((a, b) => a.week.localeCompare(b.week))
+  const latest = sorted[sorted.length - 1]
+  const previous = sorted[sorted.length - 2]
+  
+  const wowChange = previous.actual !== 0 
+    ? Math.round(((latest.actual - previous.actual) / previous.actual) * 100)
+    : 0
+  
+  return {
+    currentWeek: latest.week,
+    currentValue: latest.actual,
+    previousWeek: previous.week,
+    previousValue: previous.actual,
+    wowChange,
+    wowChangeText: wowChange >= 0 ? `+${wowChange}%` : `${wowChange}%`
+  }
+})
+
+const monthlyComparison = computed(() => {
+  if (monthlyStats.value.length < 2) return null
+  
+  const sorted = [...monthlyStats.value].sort((a, b) => a.month.localeCompare(b.month))
+  const latest = sorted[sorted.length - 1]
+  const previous = sorted[sorted.length - 2]
+  
+  const momChange = previous.actual !== 0 
+    ? Math.round(((latest.actual - previous.actual) / previous.actual) * 100)
+    : 0
+  
+  const sameMonthLastYear = sorted.find(m => {
+    const [currYear, currMonth] = latest.month.split('-')
+    return m.month === `${parseInt(currYear) - 1}-${currMonth}`
+  })
+  
+  const yoyChange = sameMonthLastYear && sameMonthLastYear.actual !== 0
+    ? Math.round(((latest.actual - sameMonthLastYear.actual) / sameMonthLastYear.actual) * 100)
+    : null
+  
+  return {
+    currentMonth: latest.month,
+    currentValue: latest.actual,
+    previousMonth: previous.month,
+    previousValue: previous.actual,
+    momChange,
+    momChangeText: momChange >= 0 ? `+${momChange}%` : `${momChange}%`,
+    sameMonthLastYear: sameMonthLastYear?.month,
+    sameMonthLastYearValue: sameMonthLastYear?.actual,
+    yoyChange,
+    yoyChangeText: yoyChange !== null ? (yoyChange >= 0 ? `+${yoyChange}%` : `${yoyChange}%`) : '无去年数据'
+  }
+})
+
+const yearlyComparison = computed(() => {
+  if (monthlyStats.value.length === 0) return null
+  
+  const currentYear = new Date().getFullYear()
+  const lastYear = currentYear - 1
+  
+  const currentYearData = monthlyStats.value.filter(m => m.month.startsWith(`${currentYear}-`))
+  const lastYearData = monthlyStats.value.filter(m => m.month.startsWith(`${lastYear}-`))
+  
+  const currentYearTotal = currentYearData.reduce((sum, m) => sum + m.actual, 0)
+  const lastYearTotal = lastYearData.reduce((sum, m) => sum + m.actual, 0)
+  
+  const yoyChange = lastYearTotal !== 0
+    ? Math.round(((currentYearTotal - lastYearTotal) / lastYearTotal) * 100)
+    : 0
+  
+  return {
+    currentYear,
+    currentYearTotal,
+    lastYear,
+    lastYearTotal,
+    yoyChange,
+    yoyChangeText: yoyChange >= 0 ? `+${yoyChange}%` : `${yoyChange}%`
+  }
+})
 </script>
 
 <template>
@@ -319,7 +400,7 @@ function toggleWeekly() {
               <span class="text-gray-600">目标</span>
               <span class="text-gray-500">{{ item.target.toLocaleString() }}人</span>
             </div>
-            <div class="h-2 bg-gray-200 rounded-full overflow-hidden">
+            <div class="h-2 bg-gray-200 rounded-full overflow-hidden" :style="{ minWidth: `${Math.max(item.percentage, 100)}%` }">
               <div 
                 :class="['h-full transition-all duration-500', item.percentage >= 100 ? 'bg-green-500' : 'bg-orange-500']"
                 :style="{ width: `${item.percentage}%` }"
@@ -353,7 +434,7 @@ function toggleWeekly() {
                       {{ item.percentage }}%
                     </span>
                   </div>
-                  <div class="h-4 bg-gray-200 rounded-full overflow-hidden">
+                  <div class="h-4 bg-gray-200 rounded-full overflow-hidden" :style="{ minWidth: `${Math.max(item.percentage, 100)}%` }">
                     <div 
                       :class="['h-full transition-all duration-500 flex items-center justify-end pr-2', item.percentage >= 100 ? 'bg-green-500' : 'bg-orange-500']"
                       :style="{ width: `${Math.max(item.percentage, 5)}%` }"
@@ -411,7 +492,7 @@ function toggleWeekly() {
             </div>
           </div>
           <div class="flex items-center gap-2">
-            <div class="flex-1 h-3 bg-white/30 rounded-full overflow-hidden">
+            <div class="flex-1 h-3 bg-white/30 rounded-full overflow-hidden" :style="{ minWidth: `${Math.max(yearlyStats.percentage, 100)}%` }">
               <div 
                 class="h-full bg-white transition-all duration-500"
                 :style="{ width: `${yearlyStats.percentage}%` }"
@@ -419,6 +500,107 @@ function toggleWeekly() {
             </div>
             <span class="text-sm font-medium">{{ yearlyStats.total.toLocaleString() }} / {{ yearlyStats.target.toLocaleString() }}</span>
           </div>
+        </div>
+      </div>
+      
+      <div>
+        <div class="flex items-center justify-between mb-3">
+          <h4 class="font-medium text-gray-700">📊 同比数据分析（WoW/MoM/YoY）</h4>
+        </div>
+        
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div v-if="weeklyComparison" class="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg p-4">
+            <div class="flex items-center gap-2 mb-2">
+              <span class="text-blue-600 font-bold">📅 WoW</span>
+              <span class="text-sm text-blue-500">周环比</span>
+            </div>
+            <div class="space-y-2">
+              <div class="flex justify-between">
+                <span class="text-sm text-gray-600">{{ weeklyComparison.currentWeek }}</span>
+                <span class="font-semibold text-gray-800">{{ weeklyComparison.currentValue.toLocaleString() }}人</span>
+              </div>
+              <div class="flex justify-between">
+                <span class="text-sm text-gray-500">{{ weeklyComparison.previousWeek }}</span>
+                <span class="text-sm text-gray-500">{{ weeklyComparison.previousValue.toLocaleString() }}人</span>
+              </div>
+              <div class="pt-2 border-t border-blue-200">
+                <div :class="['text-xl font-bold', weeklyComparison.wowChange >= 0 ? 'text-green-600' : 'text-red-600']">
+                  {{ weeklyComparison.wowChangeText }}
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <div v-if="monthlyComparison" class="bg-gradient-to-br from-purple-50 to-pink-50 rounded-lg p-4">
+            <div class="flex items-center gap-2 mb-2">
+              <span class="text-purple-600 font-bold">📈 MoM</span>
+              <span class="text-sm text-purple-500">月环比</span>
+            </div>
+            <div class="space-y-2">
+              <div class="flex justify-between">
+                <span class="text-sm text-gray-600">{{ monthlyComparison.currentMonth }}</span>
+                <span class="font-semibold text-gray-800">{{ monthlyComparison.currentValue.toLocaleString() }}人</span>
+              </div>
+              <div class="flex justify-between">
+                <span class="text-sm text-gray-500">{{ monthlyComparison.previousMonth }}</span>
+                <span class="text-sm text-gray-500">{{ monthlyComparison.previousValue.toLocaleString() }}人</span>
+              </div>
+              <div class="pt-2 border-t border-purple-200">
+                <div :class="['text-xl font-bold', monthlyComparison.momChange >= 0 ? 'text-green-600' : 'text-red-600']">
+                  {{ monthlyComparison.momChangeText }}
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <div v-if="monthlyComparison" class="bg-gradient-to-br from-amber-50 to-orange-50 rounded-lg p-4">
+            <div class="flex items-center gap-2 mb-2">
+              <span class="text-amber-600 font-bold">🔥 YoY</span>
+              <span class="text-sm text-amber-500">同比去年</span>
+            </div>
+            <div class="space-y-2">
+              <div class="flex justify-between">
+                <span class="text-sm text-gray-600">{{ monthlyComparison.currentMonth }}</span>
+                <span class="font-semibold text-gray-800">{{ monthlyComparison.currentValue.toLocaleString() }}人</span>
+              </div>
+              <div class="flex justify-between">
+                <span class="text-sm text-gray-500">{{ monthlyComparison.sameMonthLastYear || '去年同月' }}</span>
+                <span class="text-sm text-gray-500">{{ monthlyComparison.sameMonthLastYearValue?.toLocaleString() || '-' }}人</span>
+              </div>
+              <div class="pt-2 border-t border-amber-200">
+                <div :class="['text-xl font-bold', monthlyComparison.yoyChange !== null && monthlyComparison.yoyChange >= 0 ? 'text-green-600' : monthlyComparison.yoyChange !== null && monthlyComparison.yoyChange < 0 ? 'text-red-600' : 'text-gray-400']">
+                  {{ monthlyComparison.yoyChangeText }}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <div v-if="yearlyComparison" class="mt-4 bg-gradient-to-r from-teal-500 to-cyan-600 rounded-lg p-4 text-white">
+          <div class="flex items-center gap-2 mb-3">
+            <span class="text-lg">📊</span>
+            <span class="font-bold">年度同比对比</span>
+          </div>
+          <div class="grid grid-cols-3 gap-4">
+            <div>
+              <div class="text-sm opacity-80">{{ yearlyComparison.lastYear }}年涨粉</div>
+              <div class="text-xl font-bold">{{ yearlyComparison.lastYearTotal.toLocaleString() }} 人</div>
+            </div>
+            <div>
+              <div class="text-sm opacity-80">{{ yearlyComparison.currentYear }}年涨粉</div>
+              <div class="text-xl font-bold">{{ yearlyComparison.currentYearTotal.toLocaleString() }} 人</div>
+            </div>
+            <div>
+              <div class="text-sm opacity-80">年度同比增长</div>
+              <div :class="['text-xl font-bold', yearlyComparison.yoyChange >= 0 ? 'text-green-300' : 'text-red-300']">
+                {{ yearlyComparison.yoyChangeText }}
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <div v-if="!weeklyComparison && !monthlyComparison" class="bg-gray-50 rounded-lg p-4 text-center">
+          <span class="text-gray-500">上传更多数据后将显示同比分析</span>
         </div>
       </div>
     </div>
