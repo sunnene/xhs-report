@@ -9,6 +9,10 @@ defineProps<{
 function getIcon(type: string) {
   return type === '视频' ? '📹' : '📝'
 }
+
+function getInteraction(note: Note): number {
+  return note.like + note.collect + note.comment + note.share
+}
 </script>
 
 <template>
@@ -41,8 +45,8 @@ function getIcon(type: string) {
           </div>
         </div>
         <div class="text-right">
-          <div class="text-sm font-semibold text-gray-800">曝光 {{ formatNumber(note.exposure) }}</div>
-          <div class="text-xs text-gray-400">点赞 {{ note.like }} · 评论 {{ note.comment }}</div>
+          <div class="text-sm font-semibold text-gray-800">互动 {{ formatNumber(getInteraction(note)) }}</div>
+          <div class="text-xs text-gray-400">点赞 {{ note.like }} · 收藏 {{ note.collect }} · 评论 {{ note.comment }} · 分享 {{ note.share }}</div>
         </div>
       </div>
     </div>

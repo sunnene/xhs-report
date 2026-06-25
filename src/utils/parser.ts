@@ -2,18 +2,18 @@ import * as XLSX from 'xlsx'
 import type { Note } from '@/types'
 
 export const COLUMN_KEYWORDS: Record<string, string[]> = {
-  title: ['标题', '笔记标题', '内容标题', '内容', '文案', '笔记', '名称'],
-  type: ['体裁', '类型', '内容类型', '形式', '视频/图文', '格式', '视频', '图文'],
-  exposure: ['曝光', '曝光量', '曝光次数', '展现', '展现量', '流量', '曝光数'],
-  view: ['观看', '观看量', '播放', '播放量', '浏览', '浏览量', '阅读', '阅读量', '播放次数'],
-  clickRate: ['点击', '点击率', '封面点击率', '点击量', '点击转化率', '点击率%'],
-  followers: ['涨粉', '关注量', '新增粉丝', '新增关注', '净增粉丝', '涨粉量', '增粉', '粉丝增长', '粉丝增加', '新增粉', '涨粉数'],
-  like: ['点赞', '点赞数', '喜欢', '赞', '爱心', '点赞量'],
-  comment: ['评论', '评论数', '留言', '回复', '评论量'],
-  collect: ['收藏', '收藏数', '保存', '收藏量'],
-  share: ['分享', '分享数', '转发', '分享量'],
-  date: ['时间', '发布时间', '首次发布时间', '日期', '发布日期', '周期', '周', '月', '年', '星期', '发布日'],
-  tags: ['标签', '自定义标签', '分类标签', '关键词', '话题', '分类', '标签列表']
+  title: ['标题', '笔记标题', '内容标题', '内容', '文案', '笔记', '名称', '作品', '帖子', '动态', '主题'],
+  type: ['体裁', '类型', '内容类型', '形式', '视频/图文', '格式', '视频', '图文', 'video', 'image', '图片'],
+  exposure: ['曝光', '曝光量', '曝光次数', '展现', '展现量', '流量', '曝光数', '曝光次数', 'reach', 'impression'],
+  view: ['观看', '观看量', '播放', '播放量', '浏览', '浏览量', '阅读', '阅读量', '播放次数', 'play', 'view', 'pv', 'uv'],
+  clickRate: ['点击', '点击率', '封面点击率', '点击量', '点击转化率', '点击率%', 'ctr', 'click'],
+  followers: ['涨粉', '关注量', '新增粉丝', '新增关注', '净增粉丝', '涨粉量', '增粉', '粉丝增长', '粉丝增加', '新增粉', '涨粉数', 'fans', 'followers', 'new_fans'],
+  like: ['点赞', '点赞数', '喜欢', '赞', '爱心', '点赞量', 'like', 'likes', 'liked', '赞数'],
+  comment: ['评论', '评论数', '留言', '回复', '评论量', 'comment', 'comments', '留言数'],
+  collect: ['收藏', '收藏数', '保存', '收藏量', 'collect', 'collection', 'saved', '收藏量'],
+  share: ['分享', '分享数', '转发', '分享量', 'share', 'shares', 'forward', '转发量'],
+  date: ['时间', '发布时间', '首次发布时间', '日期', '发布日期', '周期', '周', '月', '年', '星期', '发布日', 'date', 'time', 'publish_time'],
+  tags: ['标签', '自定义标签', '分类标签', '关键词', '话题', '分类', '标签列表', 'tag', 'tags', 'keyword', 'keywords']
 }
 
 export function normalizeHeader(header: string): string {
@@ -29,13 +29,16 @@ export function normalizeHeader(header: string): string {
     .replace(/】/g, '')
     .replace(/"/g, '')
     .replace(/'/g, '')
+    .replace(/。/g, '')
+    .replace(/·/g, '')
 }
 
 export function findColumnIndex(headers: string[], keywords: string[]): number {
   for (let i = 0; i < headers.length; i++) {
     const normalized = normalizeHeader(headers[i])
     for (const keyword of keywords) {
-      if (normalized.includes(keyword.toLowerCase()) || keyword.toLowerCase().includes(normalized)) {
+      const keywordNormalized = normalizeHeader(keyword)
+      if (normalized.includes(keywordNormalized) || keywordNormalized.includes(normalized)) {
         return i
       }
     }
@@ -45,15 +48,33 @@ export function findColumnIndex(headers: string[], keywords: string[]): number {
 
 export function toNumber(value: unknown): number {
   if (value === null || value === undefined) return 0
-  if (typeof value === 'number') return value
+  if (typeof value === 'number') {
+    if (isNaN(value)) return 0
+    return value
+  }
   const strValue = String(value)
     .replace(/,/g, '')
     .replace(/，/g, '')
     .replace(/\s/g, '')
+    .replace(/万/g, '0000')
+    .replace(/W/g, '0000')
+    .replace(/w/g, '0000')
+    .replace(/\.0+$/, '')
     .trim()
   if (strValue === '') return 0
+  if (strValue === '-') return 0
   const num = parseFloat(strValue)
   return isNaN(num) ? 0 : num
+}
+
+function tryParseDate(dateStr: string): string {
+  const trimmed = dateStr.trim()
+  if (trimmed.match(/^\d{4}-\d{2}-\d{2}/)) return trimmed
+  if (trimmed.match(/^\d{4}\/\d{2}\/\d{2}/)) return trimmed
+  if (trimmed.match(/^\d{2}\/\d{2}/)) return `2026-${trimmed}`
+  if (trimmed.match(/^\d{1,2}月\d{1,2}日/)) return trimmed
+  if (trimmed.match(/周\d/)) return trimmed
+  return trimmed
 }
 
 export function parseExcel(file: File): Promise<Note[]> {
@@ -81,7 +102,8 @@ export function parseExcel(file: File): Promise<Note[]> {
         const jsonData = XLSX.utils.sheet_to_json(worksheet, { 
           header: 1,
           defval: '',
-          blankrows: false
+          blankrows: false,
+          raw: false
         }) as (string | number)[][]
         
         const notes = parseJsonData(jsonData)
@@ -129,7 +151,8 @@ export function parseCsv(file: File): Promise<Note[]> {
         const jsonData = XLSX.utils.sheet_to_json(worksheet, { 
           header: 1,
           defval: '',
-          blankrows: false
+          blankrows: false,
+          raw: false
         }) as (string | number)[][]
         
         const notes = parseJsonData(jsonData)
@@ -160,13 +183,16 @@ function parseJsonData(jsonData: (string | number)[][]): Note[] {
   let headerRowIndex = -1
   let maxScore = 0
   
-  for (let i = 0; i < Math.min(15, jsonData.length); i++) {
+  for (let i = 0; i < Math.min(20, jsonData.length); i++) {
     const row = jsonData[i]
     if (!row) continue
     
     let score = 0
     for (const cell of row) {
-      const cellStr = String(cell ?? '').toLowerCase().trim()
+      if (!cell) continue
+      const cellStr = String(cell).toLowerCase().trim()
+      if (!cellStr) continue
+      
       for (const keywords of Object.values(COLUMN_KEYWORDS)) {
         for (const keyword of keywords) {
           if (cellStr.includes(keyword.toLowerCase())) {
@@ -204,9 +230,8 @@ function parseJsonData(jsonData: (string | number)[][]): Note[] {
     }
   }
   
-  const hasAnyData = Object.keys(columnMapping).length > 0
-  if (!hasAnyData) {
-    throw new Error(`未识别到任何数据列。请确保表格包含以下关键字段之一：标题、曝光、观看、点赞、评论、收藏、分享、日期、标签等。\n\n当前表格的表头：\n${headers.map(h => h.original).join('\n')}`)
+  if (foundColumns.length === 0) {
+    throw new Error(`未识别到任何数据列。\n\n支持的关键字段：\n${Object.keys(COLUMN_KEYWORDS).join('、')}\n\n当前表格的表头：\n${headers.map(h => h.original).join('\n')}`)
   }
   
   const notes: Note[] = []
@@ -223,113 +248,75 @@ function parseJsonData(jsonData: (string | number)[][]): Note[] {
   const dateIndex = columnMapping.date
   const tagsIndex = columnMapping.tags
   
+  let parsedRowCount = 0
+  
   for (let i = headerRowIndex + 1; i < jsonData.length; i++) {
     const row = jsonData[i]
     if (!row) continue
     
     let rowHasContent = false
     for (const cell of row) {
-      if (String(cell ?? '').trim() !== '') {
+      if (cell !== null && cell !== undefined && String(cell).trim() !== '') {
         rowHasContent = true
         break
       }
     }
     if (!rowHasContent) continue
     
-    let hasRowData = false
     const rowData: Partial<Note> = {
       id: `note-${i}`
     }
     
-    if (titleIndex !== undefined) {
+    if (titleIndex !== undefined && row[titleIndex] !== undefined) {
       const title = String(row[titleIndex] ?? '').trim()
-      if (title) {
-        rowData.title = title
-        hasRowData = true
-      }
+      rowData.title = title || `笔记 ${i - headerRowIndex}`
     } else {
       rowData.title = `笔记 ${i - headerRowIndex}`
-      hasRowData = true
     }
     
-    if (typeIndex !== undefined) {
+    if (typeIndex !== undefined && row[typeIndex] !== undefined) {
       const typeStr = String(row[typeIndex] ?? '').trim()
-      rowData.type = typeStr === '视频' || typeStr.includes('视频') ? '视频' : '图文'
+      rowData.type = typeStr === '视频' || typeStr.includes('视频') || typeStr.toLowerCase().includes('video') ? '视频' : '图文'
     } else {
       rowData.type = '图文'
     }
     
-    if (exposureIndex !== undefined) {
-      rowData.exposure = toNumber(row[exposureIndex])
-      if (rowData.exposure > 0) hasRowData = true
-    } else {
-      rowData.exposure = 0
-    }
+    rowData.exposure = exposureIndex !== undefined && row[exposureIndex] !== undefined ? toNumber(row[exposureIndex]) : 0
+    rowData.view = viewIndex !== undefined && row[viewIndex] !== undefined ? toNumber(row[viewIndex]) : 0
+    rowData.clickRate = clickRateIndex !== undefined && row[clickRateIndex] !== undefined ? toNumber(row[clickRateIndex]) : 0
+    rowData.like = likeIndex !== undefined && row[likeIndex] !== undefined ? toNumber(row[likeIndex]) : 0
+    rowData.comment = commentIndex !== undefined && row[commentIndex] !== undefined ? toNumber(row[commentIndex]) : 0
+    rowData.collect = collectIndex !== undefined && row[collectIndex] !== undefined ? toNumber(row[collectIndex]) : 0
+    rowData.share = shareIndex !== undefined && row[shareIndex] !== undefined ? toNumber(row[shareIndex]) : 0
+    rowData.followers = followersIndex !== undefined && row[followersIndex] !== undefined ? toNumber(row[followersIndex]) : 0
     
-    if (viewIndex !== undefined) {
-      rowData.view = toNumber(row[viewIndex])
-    } else {
-      rowData.view = 0
-    }
-    
-    if (clickRateIndex !== undefined) {
-      rowData.clickRate = toNumber(row[clickRateIndex])
-    } else {
-      rowData.clickRate = 0
-    }
-    
-    if (likeIndex !== undefined) {
-      rowData.like = toNumber(row[likeIndex])
-      if (rowData.like > 0) hasRowData = true
-    } else {
-      rowData.like = 0
-    }
-    
-    if (commentIndex !== undefined) {
-      rowData.comment = toNumber(row[commentIndex])
-      if (rowData.comment > 0) hasRowData = true
-    } else {
-      rowData.comment = 0
-    }
-    
-    if (collectIndex !== undefined) {
-      rowData.collect = toNumber(row[collectIndex])
-    } else {
-      rowData.collect = 0
-    }
-    
-    if (shareIndex !== undefined) {
-      rowData.share = toNumber(row[shareIndex])
-    } else {
-      rowData.share = 0
-    }
-    
-    if (followersIndex !== undefined) {
-      rowData.followers = toNumber(row[followersIndex])
-    } else {
-      rowData.followers = 0
-    }
-    
-    if (dateIndex !== undefined) {
+    if (dateIndex !== undefined && row[dateIndex] !== undefined) {
       const date = String(row[dateIndex] ?? '').trim()
       if (date) {
-        rowData.date = date
+        rowData.date = tryParseDate(date)
       }
     }
     
-    if (tagsIndex !== undefined) {
+    if (tagsIndex !== undefined && row[tagsIndex] !== undefined) {
       const tagsStr = String(row[tagsIndex] ?? '').trim()
       rowData.tags = tagsStr ? tagsStr.split(/[,，;；、\s]+/).filter(t => t.trim()) : undefined
     }
     
-    if (hasRowData) {
+    const hasValidData = rowData.exposure > 0 || rowData.like > 0 || rowData.comment > 0 || 
+                        rowData.collect > 0 || rowData.share > 0 || rowData.view > 0 || rowData.followers > 0
+    
+    if (hasValidData || rowData.title) {
       notes.push(rowData as Note)
+      parsedRowCount++
     }
   }
   
   if (notes.length === 0) {
-    throw new Error('没有找到有效数据行。请检查表格数据是否正确填写，或尝试调整表格格式。')
+    throw new Error(`没有找到有效数据行。\n\n已识别到的数据列：${foundColumns.join('、')}\n\n请确保数据行位于表头下方，且包含有效的数字数据。`)
   }
+  
+  console.log(`✅ 解析成功：共解析 ${notes.length} 行数据，识别到 ${foundColumns.length} 个字段`)
+  console.log(`📋 识别到的字段：${foundColumns.join('、')}`)
   
   return notes
 }
