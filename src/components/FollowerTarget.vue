@@ -462,11 +462,11 @@ const yearlyComparison = computed(() => {
         <div class="bg-gradient-to-r from-green-500 to-emerald-600 rounded-lg p-6 text-white">
           <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
             <div>
-              <div class="text-sm opacity-80">表格涨粉</div>
+              <div class="text-sm opacity-80">笔记增粉</div>
               <div class="text-xl font-bold">{{ yearlyStats.actual.toLocaleString() }} 人</div>
             </div>
             <div>
-              <div class="text-sm opacity-80">其他涨粉</div>
+              <div class="text-sm opacity-80">其他涨粉 <span class="text-xs">(包含现有粉丝+其他增粉)</span></div>
               <div class="flex items-center gap-1">
                 <input 
                   v-model.number="additionalFollowers"
@@ -487,7 +487,7 @@ const yearlyComparison = computed(() => {
           </div>
           <div class="bg-white/10 rounded-lg p-3 mb-4">
             <div class="flex items-center justify-between text-sm">
-              <span>年度总涨粉 = 表格涨粉 + 其他涨粉</span>
+              <span>年度总涨粉 = 笔记增粉 + 其他涨粉</span>
               <span class="font-bold">{{ yearlyStats.total.toLocaleString() }} = {{ yearlyStats.actual.toLocaleString() }} + {{ yearlyStats.additional.toLocaleString() }}</span>
             </div>
           </div>
