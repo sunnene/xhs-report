@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
+import * as XLSX from 'xlsx'
 
 interface Comment {
   content: string
@@ -35,9 +36,15 @@ async function processFile(file: File) {
   error.value = ''
   
   try {
-    const data = await readFile(file)
-    const comments = parseComments(data, file.name)
-    allComments.value = [...allComments.value, ...comments]
+    if (file.name.endsWith('.xlsx') || file.name.endsWith('.xls')) {
+      const data = await readExcelFile(file)
+      const comments = parseExcelComments(data)
+      allComments.value = [...allComments.value, ...comments]
+    } else {
+      const data = await readFile(file)
+      const comments = parseComments(data, file.name)
+      allComments.value = [...allComments.value, ...comments]
+    }
   } catch (err) {
     error.value = err instanceof Error ? err.message : '上传失败'
   } finally {
@@ -54,13 +61,57 @@ function readFile(file: File): Promise<string> {
   })
 }
 
+async function readExcelFile(file: File): Promise<any[]> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = (e) => {
+      try {
+        const data = new Uint8Array(e.target?.result as ArrayBuffer)
+        const workbook = XLSX.read(data, { type: 'array' })
+        const firstSheet = workbook.Sheets[workbook.SheetNames[0]]
+        const jsonData = XLSX.utils.sheet_to_json(firstSheet)
+        resolve(jsonData)
+      } catch (err) {
+        reject(err)
+      }
+    }
+    reader.onerror = reject
+    reader.readAsArrayBuffer(file)
+  })
+}
+
+function parseExcelComments(data: any[]): Comment[] {
+  const comments: Comment[] = []
+  
+  const contentFields = ['评论', '内容', 'comment', 'content', '评论文本', '留言', '回复']
+  
+  for (const row of data) {
+    for (const field of contentFields) {
+      const lowerField = field.toLowerCase()
+      for (const key of Object.keys(row)) {
+        if (key.toLowerCase().includes(lowerField)) {
+          const value = row[key]
+          if (value && typeof value === 'string' && value.trim()) {
+            comments.push({ content: value.trim() })
+            break
+          }
+        }
+      }
+    }
+  }
+  
+  return comments
+}
+
 function parseComments(data: string, fileName: string): Comment[] {
   const comments: Comment[] = []
   
   if (fileName.endsWith('.csv')) {
     const lines = data.split('\n').filter(line => line.trim())
     const header = lines[0].split(',').map(col => col.trim().toLowerCase())
-    const contentIndex = header.findIndex(h => h.includes('评论') || h.includes('内容') || h.includes('comment'))
+    const contentIndex = header.findIndex(h => 
+      h.includes('评论') || h.includes('内容') || h.includes('comment') || h.includes('content')
+    )
     
     for (let i = 1; i < lines.length; i++) {
       const values = parseCSVLine(lines[i])
@@ -164,7 +215,7 @@ const keywordSearchAnalysis = computed(() => {
       <input 
         ref="commentInput"
         type="file" 
-        accept=".csv,.txt" 
+        accept=".csv,.txt,.xlsx,.xls" 
         class="hidden" 
         @change="handleFileUpload"
         multiple
@@ -173,7 +224,7 @@ const keywordSearchAnalysis = computed(() => {
       <div v-if="!hasData || isUploading">
         <span class="text-4xl">📁</span>
         <p class="mt-2 text-gray-600">{{ isUploading ? '正在解析...' : '点击或拖拽上传评论文件（支持批量上传多个文件）' }}</p>
-        <p class="text-sm text-gray-400">支持 CSV、TXT 格式</p>
+        <p class="text-sm text-gray-400">支持 CSV、TXT、Excel (.xlsx/.xls) 格式</p>
       </div>
       <div v-else class="flex items-center justify-center gap-4">
         <span class="text-green-500">✓</span>
@@ -238,7 +289,7 @@ const keywordSearchAnalysis = computed(() => {
     </div>
     
     <div v-if="!hasData" class="bg-blue-50 rounded-lg p-4">
-      <p class="text-sm text-blue-600">💡 提示：上传包含评论内容的CSV或TXT文件，支持批量上传多个文件进行分析</p>
+      <p class="text-sm text-blue-600">💡 提示：上传包含评论内容的CSV、TXT或Excel文件，支持批量上传多个文件进行分析</p>
     </div>
   </div>
 </template>

@@ -151,10 +151,10 @@ function toggleWeekly() {
               <span class="text-gray-600">目标</span>
               <span class="text-gray-500">{{ item.target.toLocaleString() }}</span>
             </div>
-            <div class="h-2 bg-gray-200 rounded-full overflow-hidden" :style="{ minWidth: `${Math.max(item.percentage, 100)}%` }">
+            <div class="h-2 bg-gray-200 rounded-full overflow-hidden">
               <div 
                 :class="['h-full transition-all duration-500', item.percentage >= 100 ? 'bg-green-500' : 'bg-orange-500']"
-                :style="{ width: `${item.percentage}%` }"
+                :style="{ width: `${Math.min(item.percentage, 100)}%` }"
               ></div>
             </div>
           </div>
@@ -185,10 +185,10 @@ function toggleWeekly() {
                       {{ item.percentage }}%
                     </span>
                   </div>
-                  <div class="h-4 bg-gray-200 rounded-full overflow-hidden" :style="{ minWidth: `${Math.max(item.percentage, 100)}%` }">
+                  <div class="h-4 bg-gray-200 rounded-full overflow-hidden">
                     <div 
                       :class="['h-full transition-all duration-500 flex items-center justify-end pr-2', item.percentage >= 100 ? 'bg-green-500' : 'bg-orange-500']"
-                      :style="{ width: `${Math.max(item.percentage, 5)}%` }"
+                      :style="{ width: `${Math.min(Math.max(item.percentage, 5), 100)}%` }"
                     >
                       <span v-if="item.percentage >= 20" class="text-xs text-white font-medium">
                         {{ item.actual.toLocaleString() }}
@@ -226,10 +226,10 @@ function toggleWeekly() {
             </div>
           </div>
           <div class="flex items-center gap-2">
-            <div class="flex-1 h-3 bg-white/30 rounded-full overflow-hidden" :style="{ minWidth: `${Math.max(yearlyStats.percentage, 100)}%` }">
+            <div class="flex-1 h-3 bg-white/30 rounded-full overflow-hidden">
               <div 
                 class="h-full bg-white transition-all duration-500"
-                :style="{ width: `${yearlyStats.percentage}%` }"
+                :style="{ width: `${Math.min(yearlyStats.percentage, 100)}%` }"
               ></div>
             </div>
           </div>
