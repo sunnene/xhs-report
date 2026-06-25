@@ -2,17 +2,17 @@ import * as XLSX from 'xlsx'
 import type { Note } from '@/types'
 
 export const COLUMN_KEYWORDS: Record<string, string[]> = {
-  title: ['标题', '笔记标题', '内容标题', '内容', '文案', '笔记', '名称', '作品', '帖子', '动态', '主题'],
-  type: ['体裁', '类型', '内容类型', '形式', '视频/图文', '格式', '视频', '图文', 'video', 'image', '图片'],
-  exposure: ['曝光', '曝光量', '曝光次数', '展现', '展现量', '流量', '曝光数', '曝光次数', 'reach', 'impression'],
-  view: ['观看', '观看量', '播放', '播放量', '浏览', '浏览量', '阅读', '阅读量', '播放次数', 'play', 'view', 'pv', 'uv'],
-  clickRate: ['点击', '点击率', '封面点击率', '点击量', '点击转化率', '点击率%', 'ctr', 'click'],
-  followers: ['涨粉', '关注量', '新增粉丝', '新增关注', '净增粉丝', '涨粉量', '增粉', '粉丝增长', '粉丝增加', '新增粉', '涨粉数', 'fans', 'followers', 'new_fans'],
-  like: ['点赞', '点赞数', '喜欢', '赞', '爱心', '点赞量', 'like', 'likes', 'liked', '赞数'],
-  comment: ['评论', '评论数', '留言', '回复', '评论量', 'comment', 'comments', '留言数'],
-  collect: ['收藏', '收藏数', '保存', '收藏量', 'collect', 'collection', 'saved', '收藏量'],
-  share: ['分享', '分享数', '转发', '分享量', 'share', 'shares', 'forward', '转发量'],
-  date: ['时间', '发布时间', '首次发布时间', '日期', '发布日期', '周期', '周', '月', '年', '星期', '发布日', 'date', 'time', 'publish_time'],
+  title: ['标题', '笔记标题', '内容标题', '内容', '文案', '笔记', '名称', '作品', '帖子', '动态', '主题', '笔记标题\n小红书'],
+  type: ['体裁', '类型', '内容类型', '形式', '视频/图文', '格式', '视频', '图文', 'video', 'image', '图片', '文', '图'],
+  exposure: ['曝光', '曝光量', '曝光次数', '展现', '展现量', '流量', '曝光数', '曝光次数', 'reach', 'impression', '曝'],
+  view: ['观看', '观看量', '播放', '播放量', '浏览', '浏览量', '阅读', '阅读量', '播放次数', 'play', 'view', 'pv', 'uv', '观看次数'],
+  clickRate: ['点击', '点击率', '封面点击率', '点击量', '点击转化率', '点击率%', 'ctr', 'click', '封面点击', '封面'],
+  followers: ['涨粉', '关注量', '新增粉丝', '新增关注', '净增粉丝', '涨粉量', '增粉', '粉丝增长', '粉丝增加', '新增粉', '涨粉数', 'fans', 'followers', 'new_fans', '粉'],
+  like: ['点赞', '点赞数', '喜欢', '赞', '爱心', '点赞量', 'like', 'likes', 'liked', '赞数', '赞'],
+  comment: ['评论', '评论数', '留言', '回复', '评论量', 'comment', 'comments', '留言数', '评'],
+  collect: ['收藏', '收藏数', '保存', '收藏量', 'collect', 'collection', 'saved', '收藏量', '收'],
+  share: ['分享', '分享数', '转发', '分享量', 'share', 'shares', 'forward', '转发量', '分'],
+  date: ['时间', '发布时间', '首次发布时间', '日期', '发布日期', '周期', '周', '月', '年', '星期', '发布日', 'date', 'time', 'publish_time', '首次'],
   tags: ['标签', '自定义标签', '分类标签', '关键词', '话题', '分类', '标签列表', 'tag', 'tags', 'keyword', 'keywords']
 }
 
@@ -31,6 +31,8 @@ export function normalizeHeader(header: string): string {
     .replace(/'/g, '')
     .replace(/。/g, '')
     .replace(/·/g, '')
+    .replace(/\n/g, '')
+    .replace(/\r/g, '')
 }
 
 export function findColumnIndex(headers: string[], keywords: string[]): number {
@@ -106,6 +108,8 @@ export function parseExcel(file: File): Promise<Note[]> {
           raw: false
         }) as (string | number)[][]
         
+        console.log('📊 Excel解析结果:', JSON.stringify(jsonData.slice(0, 3), null, 2))
+        
         const notes = parseJsonData(jsonData)
         resolve(notes)
       } catch (error) {
@@ -139,6 +143,8 @@ export function parseCsv(file: File): Promise<Note[]> {
           return
         }
         
+        console.log('📄 CSV原始内容前500字符:', text.substring(0, 500))
+        
         const workbook = XLSX.read(text, { type: 'string' })
         
         if (workbook.SheetNames.length === 0) {
@@ -154,6 +160,8 @@ export function parseCsv(file: File): Promise<Note[]> {
           blankrows: false,
           raw: false
         }) as (string | number)[][]
+        
+        console.log('📊 CSV解析结果:', JSON.stringify(jsonData.slice(0, 3), null, 2))
         
         const notes = parseJsonData(jsonData)
         resolve(notes)
@@ -180,10 +188,12 @@ function parseJsonData(jsonData: (string | number)[][]): Note[] {
     throw new Error('文件内容为空或格式不正确')
   }
   
+  console.log('🔍 开始解析JSON数据，总行数:', jsonData.length)
+  
   let headerRowIndex = -1
   let maxScore = 0
   
-  for (let i = 0; i < Math.min(20, jsonData.length); i++) {
+  for (let i = 0; i < Math.min(30, jsonData.length); i++) {
     const row = jsonData[i]
     if (!row) continue
     
@@ -203,6 +213,8 @@ function parseJsonData(jsonData: (string | number)[][]): Note[] {
       }
     }
     
+    console.log(`📝 第${i+1}行得分: ${score}`)
+    
     if (score > maxScore) {
       maxScore = score
       headerRowIndex = i
@@ -213,11 +225,15 @@ function parseJsonData(jsonData: (string | number)[][]): Note[] {
     headerRowIndex = 0
   }
   
+  console.log(`🎯 识别到表头在第${headerRowIndex+1}行`)
+  
   const headers = jsonData[headerRowIndex].map((h, index) => ({
     original: String(h ?? '').trim(),
     normalized: normalizeHeader(String(h ?? '')),
     index
   }))
+  
+  console.log('📋 表头内容:', headers.map(h => h.original).join(' | '))
   
   const columnMapping: Record<string, number> = {}
   const foundColumns: string[] = []
@@ -227,11 +243,12 @@ function parseJsonData(jsonData: (string | number)[][]): Note[] {
     if (index !== -1) {
       columnMapping[field] = index
       foundColumns.push(headers[index].original)
+      console.log(`✅ 找到字段 "${field}" 在第${index+1}列: "${headers[index].original}"`)
     }
   }
   
   if (foundColumns.length === 0) {
-    throw new Error(`未识别到任何数据列。\n\n支持的关键字段：\n${Object.keys(COLUMN_KEYWORDS).join('、')}\n\n当前表格的表头：\n${headers.map(h => h.original).join('\n')}`)
+    throw new Error(`未识别到任何数据列。\n\n支持的关键字段：\n${Object.keys(COLUMN_KEYWORDS).join('、')}\n\n当前表格的表头（前20个）：\n${headers.slice(0, 20).map(h => h.original).join('\n')}`)
   }
   
   const notes: Note[] = []
@@ -249,6 +266,7 @@ function parseJsonData(jsonData: (string | number)[][]): Note[] {
   const tagsIndex = columnMapping.tags
   
   let parsedRowCount = 0
+  let zeroDataRowCount = 0
   
   for (let i = headerRowIndex + 1; i < jsonData.length; i++) {
     const row = jsonData[i]
@@ -308,8 +326,13 @@ function parseJsonData(jsonData: (string | number)[][]): Note[] {
     if (hasValidData || rowData.title) {
       notes.push(rowData as Note)
       parsedRowCount++
+      if (!hasValidData) {
+        zeroDataRowCount++
+      }
     }
   }
+  
+  console.log(`📊 解析完成：共解析 ${parsedRowCount} 行数据（其中 ${zeroDataRowCount} 行无数字数据）`)
   
   if (notes.length === 0) {
     throw new Error(`没有找到有效数据行。\n\n已识别到的数据列：${foundColumns.join('、')}\n\n请确保数据行位于表头下方，且包含有效的数字数据。`)
