@@ -2,18 +2,33 @@ import * as XLSX from 'xlsx'
 import type { Note } from '@/types'
 
 export const COLUMN_KEYWORDS: Record<string, string[]> = {
-  title: ['笔记标题', '标题', '内容标题', '内容', '文案', '笔记', '名称', '作品', '帖子', '动态', '主题'],
+  title: ['笔记标题', '标题', '内容标题', '内容', '文案', '作品', '帖子', '动态', '主题'],
+  date: ['首次发布时间', '发布时间', '时间', '日期', '发布日期', '周期', '周', '月', '年'],
   type: ['体裁', '类型', '内容类型', '形式', '视频/图文', '格式'],
   exposure: ['曝光', '曝光量', '曝光次数', '展现', '展现量', '流量', '曝光数'],
   view: ['观看量', '观看', '播放量', '播放', '浏览量', '浏览', '阅读量', '阅读', '播放次数'],
   clickRate: ['封面点击率', '点击率', '点击量', '点击转化率', '封面点击', '点击'],
-  followers: ['涨粉', '关注量', '新增粉丝', '新增关注', '净增粉丝', '涨粉量', '增粉', '粉丝增长', '粉丝增加', '新增粉', '涨粉数', '粉丝增量'],
   like: ['点赞', '点赞数', '喜欢', '赞', '爱心', '点赞量'],
   comment: ['评论', '评论数', '留言', '回复', '评论量'],
   collect: ['收藏', '收藏数', '保存', '收藏量'],
   share: ['分享', '分享数', '转发', '分享量'],
-  date: ['首次发布时间', '发布时间', '时间', '日期', '发布日期', '周期'],
+  followers: ['涨粉', '关注量', '新增粉丝', '新增关注', '净增粉丝', '涨粉量', '增粉', '粉丝增长', '粉丝增加', '新增粉', '涨粉数', '粉丝增量'],
   tags: ['标签', '自定义标签', '分类标签', '关键词', '话题', '分类']
+}
+
+export const FIELD_EXCLUSIONS: Record<string, string[]> = {
+  title: ['时间', '日期', '发布时间', '首次发布', '周期', '周', '月', '年'],
+  date: ['标题', '内容', '文案', '作品', '帖子', '动态', '主题'],
+  exposure: ['点击', '浏览', '阅读', '播放', '观看', '点赞', '评论', '收藏', '分享'],
+  view: ['曝光', '展现', '点击', '点赞', '评论', '收藏', '分享'],
+  clickRate: ['曝光', '展现', '观看', '播放', '浏览', '阅读', '点赞', '评论', '收藏', '分享'],
+  like: ['评论', '收藏', '分享', '点击', '曝光', '观看', '播放'],
+  comment: ['点赞', '收藏', '分享', '点击', '曝光', '观看', '播放'],
+  collect: ['点赞', '评论', '分享', '点击', '曝光', '观看', '播放'],
+  share: ['点赞', '评论', '收藏', '点击', '曝光', '观看', '播放'],
+  followers: ['曝光', '展现', '观看', '播放', '浏览', '阅读', '点击', '点赞', '评论', '收藏', '分享'],
+  type: ['时间', '日期', '标题', '内容', '曝光', '观看', '点击', '点赞', '评论', '收藏', '分享'],
+  tags: ['时间', '日期', '标题', '内容', '曝光', '观看', '点击', '点赞', '评论', '收藏', '分享', '涨粉', '关注']
 }
 
 export function normalizeHeader(header: string): string {
@@ -36,10 +51,28 @@ export function normalizeHeader(header: string): string {
     .replace(/\t/g, '')
 }
 
-export function findColumnIndex(headers: string[], keywords: string[]): number {
+function isHeaderExcluded(header: string, field: string): boolean {
+  const exclusions = FIELD_EXCLUSIONS[field] || []
+  const headerLower = header.toLowerCase()
+  for (const exclusion of exclusions) {
+    if (headerLower.includes(exclusion.toLowerCase())) {
+      return true
+    }
+  }
+  return false
+}
+
+export function findColumnIndex(headers: string[], keywords: string[], usedColumns: Set<number>, field: string): number {
   for (let i = 0; i < headers.length; i++) {
+    if (usedColumns.has(i)) continue
+    
     const header = String(headers[i] ?? '').trim()
     const headerLower = header.toLowerCase()
+    
+    if (isHeaderExcluded(header, field)) {
+      console.log(`🔒 跳过列 ${i+1} "${header}"，因包含排除关键词`)
+      continue
+    }
     
     for (const keyword of keywords) {
       const keywordLower = keyword.toLowerCase()
@@ -259,7 +292,7 @@ function parseJsonData(jsonData: (string | number)[][]): Note[] {
   
   for (const field of fieldOrder) {
     const keywords = COLUMN_KEYWORDS[field]
-    const index = findColumnIndex(headers.map(h => h.original), keywords)
+    const index = findColumnIndex(headers.map(h => h.original), keywords, usedColumns, field)
     if (index !== -1 && !usedColumns.has(index)) {
       columnMapping[field] = index
       foundColumns.push(headers[index].original)
@@ -288,6 +321,8 @@ function parseJsonData(jsonData: (string | number)[][]): Note[] {
   const followersIndex = columnMapping.followers
   const dateIndex = columnMapping.date
   const tagsIndex = columnMapping.tags
+  
+  console.log(`🔍 字段索引映射：title=${titleIndex}, date=${dateIndex}, exposure=${exposureIndex}, view=${viewIndex}, like=${likeIndex}, comment=${commentIndex}, collect=${collectIndex}, share=${shareIndex}, followers=${followersIndex}`)
   
   for (let i = headerRowIndex + 1; i < jsonData.length; i++) {
     const row = jsonData[i]
@@ -325,7 +360,16 @@ function parseJsonData(jsonData: (string | number)[][]): Note[] {
       rowData.type = '图文'
     }
     
-    rowData.exposure = exposureIndex !== undefined ? toNumber(row[exposureIndex]) : 0
+    if (exposureIndex !== undefined) {
+      const rawExposure = row[exposureIndex]
+      rowData.exposure = toNumber(rawExposure)
+      if (i === headerRowIndex + 2 && rowData.exposure === 0) {
+        console.log(`⚠️ 曝光量为0，原始值: "${rawExposure}"，类型: ${typeof rawExposure}`)
+      }
+    } else {
+      rowData.exposure = 0
+    }
+    
     rowData.view = viewIndex !== undefined ? toNumber(row[viewIndex]) : 0
     rowData.clickRate = clickRateIndex !== undefined ? toNumber(row[clickRateIndex]) : 0
     rowData.like = likeIndex !== undefined ? toNumber(row[likeIndex]) : 0
@@ -350,6 +394,7 @@ function parseJsonData(jsonData: (string | number)[][]): Note[] {
   }
   
   console.log(`✅ 解析成功：共解析 ${notes.length} 行数据，识别到 ${foundColumns.length} 个字段`)
+  console.log(`📊 解析结果统计：总曝光=${notes.reduce((s, n) => s + n.exposure, 0)}, 总互动=${notes.reduce((s, n) => s + n.like + n.comment + n.collect + n.share, 0)}`)
   
   return notes
 }
