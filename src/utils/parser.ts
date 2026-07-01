@@ -2,18 +2,18 @@ import * as XLSX from 'xlsx'
 import type { Note } from '@/types'
 
 export const COLUMN_KEYWORDS: Record<string, string[]> = {
-  title: ['标题', '笔记标题', '内容标题', '内容', '文案', '笔记', '名称', '作品', '帖子', '动态', '主题', '笔记标题', '笔记标题\n小红书'],
-  type: ['体裁', '类型', '内容类型', '形式', '视频/图文', '格式', '视频', '图文', 'video', 'image', '图片', '文', '图', '图文类型'],
-  exposure: ['曝光', '曝光量', '曝光次数', '展现', '展现量', '流量', '曝光数', 'reach', 'impression', '曝', '曝光次数', '总曝光', '曝光量\n曝光'],
-  view: ['观看', '观看量', '播放', '播放量', '浏览', '浏览量', '阅读', '阅读量', '播放次数', 'play', 'view', 'pv', 'uv', '观看次数', '播放数', '阅读次数', '观看量\n观看'],
-  clickRate: ['点击', '点击率', '封面点击率', '点击量', '点击转化率', '点击率%', 'ctr', 'click', '封面点击', '封面', '点击次数', '点击率%\n点击率', '封面点击率'],
-  followers: ['涨粉', '关注量', '新增粉丝', '新增关注', '净增粉丝', '涨粉量', '增粉', '粉丝增长', '粉丝增加', '新增粉', '涨粉数', 'fans', 'followers', 'new_fans', '粉', '新增关注数', '粉丝增量', '涨粉\n粉丝'],
-  like: ['点赞', '点赞数', '喜欢', '赞', '爱心', '点赞量', 'like', 'likes', 'liked', '赞数', '赞', '点赞次数', '点赞\n点赞'],
-  comment: ['评论', '评论数', '留言', '回复', '评论量', 'comment', 'comments', '留言数', '评', '评论次数', '评论\n评论'],
-  collect: ['收藏', '收藏数', '保存', '收藏量', 'collect', 'collection', 'saved', '收藏量', '收', '收藏次数', '收藏\n收藏'],
-  share: ['分享', '分享数', '转发', '分享量', 'share', 'shares', 'forward', '转发量', '分', '分享次数', '转发次数', '分享\n分享'],
-  date: ['时间', '发布时间', '首次发布时间', '日期', '发布日期', '周期', '周', '月', '年', '星期', '发布日', 'date', 'time', 'publish_time', '首次', '发布时间\n首次', '首次发布时间\n首次发布'],
-  tags: ['标签', '自定义标签', '分类标签', '关键词', '话题', '分类', '标签列表', 'tag', 'tags', 'keyword', 'keywords']
+  title: ['标题', '笔记标题', '内容标题', '内容', '文案', '笔记', '名称', '作品', '帖子', '动态', '主题'],
+  type: ['体裁', '类型', '内容类型', '形式', '视频/图文', '格式', '视频', '图文'],
+  exposure: ['曝光', '曝光量', '曝光次数', '展现', '展现量', '流量', '曝光数'],
+  view: ['观看', '观看量', '播放', '播放量', '浏览', '浏览量', '阅读', '阅读量', '播放次数'],
+  clickRate: ['点击', '点击率', '封面点击率', '点击量', '点击转化率', '封面点击', '封面'],
+  followers: ['涨粉', '关注量', '新增粉丝', '新增关注', '净增粉丝', '涨粉量', '增粉', '粉丝增长', '粉丝增加', '新增粉', '涨粉数', '粉丝增量'],
+  like: ['点赞', '点赞数', '喜欢', '赞', '爱心', '点赞量'],
+  comment: ['评论', '评论数', '留言', '回复', '评论量'],
+  collect: ['收藏', '收藏数', '保存', '收藏量'],
+  share: ['分享', '分享数', '转发', '分享量'],
+  date: ['时间', '发布时间', '首次发布时间', '日期', '发布日期', '周期', '周', '月', '年'],
+  tags: ['标签', '自定义标签', '分类标签', '关键词', '话题', '分类']
 }
 
 export function normalizeHeader(header: string): string {
@@ -34,30 +34,27 @@ export function normalizeHeader(header: string): string {
     .replace(/\n/g, '')
     .replace(/\r/g, '')
     .replace(/\t/g, '')
-    .replace(/，/g, '')
-    .replace(/,/g, '')
 }
 
 export function findColumnIndex(headers: string[], keywords: string[]): number {
   for (let i = 0; i < headers.length; i++) {
-    const header = String(headers[i] ?? '').trim().toLowerCase()
-    const normalizedHeader = normalizeHeader(headers[i])
+    const header = String(headers[i] ?? '').trim()
+    const headerLower = header.toLowerCase()
     
     for (const keyword of keywords) {
       const keywordLower = keyword.toLowerCase()
-      const normalizedKeyword = normalizeHeader(keyword)
       
-      if (header.includes(keywordLower) || keywordLower.includes(header)) {
+      if (headerLower === keywordLower) {
         return i
       }
       
-      if (normalizedHeader.includes(normalizedKeyword) || normalizedKeyword.includes(normalizedHeader)) {
+      if (headerLower.includes(keywordLower) && !headerLower.includes('率') && !headerLower.includes('量') && keyword.length >= 2) {
         return i
       }
       
-      if (header.length >= 1 && keywordLower.length >= 1) {
-        const matchChars = [...header].filter(c => keywordLower.includes(c))
-        if (matchChars.length >= Math.max(1, Math.floor(keywordLower.length / 2))) {
+      if (headerLower.includes(keywordLower) && keyword.length >= 2) {
+        const trimmedHeader = headerLower.replace(keywordLower, '').trim()
+        if (!trimmedHeader || ['量', '数', '率', '次', '值', '度', '数'].includes(trimmedHeader)) {
           return i
         }
       }
@@ -230,15 +227,15 @@ function parseJsonData(jsonData: (string | number)[][]): Note[] {
       
       for (const keywords of Object.values(COLUMN_KEYWORDS)) {
         for (const keyword of keywords) {
+          if (cellStr === keyword.toLowerCase()) {
+            score += 5
+            break
+          }
           if (cellStr.includes(keyword.toLowerCase())) {
             score += 2
             break
           }
         }
-      }
-      
-      if (/^(曝光|观看|点赞|评论|收藏|分享|涨粉|标题|日期|体裁)$/.test(cellStr)) {
-        score += 3
       }
     }
     
@@ -263,11 +260,17 @@ function parseJsonData(jsonData: (string | number)[][]): Note[] {
   const columnMapping: Record<string, number> = {}
   const foundColumns: string[] = []
   
-  for (const [field, keywords] of Object.entries(COLUMN_KEYWORDS)) {
+  const usedColumns = new Set<number>()
+  
+  const priorityFields = ['title', 'date', 'exposure', 'view', 'like', 'comment', 'collect', 'share', 'followers', 'type', 'clickRate', 'tags']
+  
+  for (const field of priorityFields) {
+    const keywords = COLUMN_KEYWORDS[field]
     const index = findColumnIndex(headers.map(h => h.original), keywords)
-    if (index !== -1) {
+    if (index !== -1 && !usedColumns.has(index)) {
       columnMapping[field] = index
       foundColumns.push(headers[index].original)
+      usedColumns.add(index)
       console.log(`✅ 找到字段 "${field}" 在第${index+1}列: "${headers[index].original}"`)
     }
   }
@@ -293,9 +296,6 @@ function parseJsonData(jsonData: (string | number)[][]): Note[] {
   const dateIndex = columnMapping.date
   const tagsIndex = columnMapping.tags
   
-  let totalRows = 0
-  let validRows = 0
-  
   for (let i = headerRowIndex + 1; i < jsonData.length; i++) {
     const row = jsonData[i]
     if (!row) continue
@@ -307,13 +307,12 @@ function parseJsonData(jsonData: (string | number)[][]): Note[] {
         const str = String(cell).trim()
         if (str !== '') {
           hasAnyContent = true
+          break
         }
       }
     }
     
     if (!hasAnyContent) continue
-    
-    totalRows++
     
     const rowData: Partial<Note> = {
       id: `note-${i}`
@@ -321,9 +320,9 @@ function parseJsonData(jsonData: (string | number)[][]): Note[] {
     
     if (titleIndex !== undefined) {
       const title = String(row[titleIndex] ?? '').trim()
-      rowData.title = title || `笔记 ${validRows + 1}`
+      rowData.title = title || `笔记 ${notes.length + 1}`
     } else {
-      rowData.title = `笔记 ${validRows + 1}`
+      rowData.title = `笔记 ${notes.length + 1}`
     }
     
     if (typeIndex !== undefined) {
@@ -354,19 +353,7 @@ function parseJsonData(jsonData: (string | number)[][]): Note[] {
       rowData.tags = tagsStr ? tagsStr.split(/[,，;；、\s]+/).filter(t => t.trim()) : undefined
     }
     
-    const hasValidData = rowData.exposure > 0 || rowData.like > 0 || rowData.comment > 0 || 
-                        rowData.collect > 0 || rowData.share > 0 || rowData.view > 0 || rowData.followers > 0
-    
-    if (hasValidData || (rowData.title && rowData.title !== '')) {
-      notes.push(rowData as Note)
-      validRows++
-    }
-  }
-  
-  console.log(`📊 解析完成：扫描 ${totalRows} 行，有效数据 ${validRows} 行`)
-  
-  if (notes.length === 0) {
-    throw new Error(`没有找到有效数据行。\n\n已识别到的数据列：${foundColumns.join('、')}\n\n请确保数据行位于表头下方，且包含有效的数字数据。`)
+    notes.push(rowData as Note)
   }
   
   console.log(`✅ 解析成功：共解析 ${notes.length} 行数据，识别到 ${foundColumns.length} 个字段`)
