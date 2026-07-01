@@ -2,17 +2,17 @@ import * as XLSX from 'xlsx'
 import type { Note } from '@/types'
 
 export const COLUMN_KEYWORDS: Record<string, string[]> = {
-  title: ['标题', '笔记标题', '内容标题', '内容', '文案', '笔记', '名称', '作品', '帖子', '动态', '主题'],
-  type: ['体裁', '类型', '内容类型', '形式', '视频/图文', '格式', '视频', '图文'],
+  title: ['笔记标题', '标题', '内容标题', '内容', '文案', '笔记', '名称', '作品', '帖子', '动态', '主题'],
+  type: ['体裁', '类型', '内容类型', '形式', '视频/图文', '格式'],
   exposure: ['曝光', '曝光量', '曝光次数', '展现', '展现量', '流量', '曝光数'],
-  view: ['观看', '观看量', '播放', '播放量', '浏览', '浏览量', '阅读', '阅读量', '播放次数'],
-  clickRate: ['点击', '点击率', '封面点击率', '点击量', '点击转化率', '封面点击', '封面'],
+  view: ['观看量', '观看', '播放量', '播放', '浏览量', '浏览', '阅读量', '阅读', '播放次数'],
+  clickRate: ['封面点击率', '点击率', '点击量', '点击转化率', '封面点击', '点击'],
   followers: ['涨粉', '关注量', '新增粉丝', '新增关注', '净增粉丝', '涨粉量', '增粉', '粉丝增长', '粉丝增加', '新增粉', '涨粉数', '粉丝增量'],
   like: ['点赞', '点赞数', '喜欢', '赞', '爱心', '点赞量'],
   comment: ['评论', '评论数', '留言', '回复', '评论量'],
   collect: ['收藏', '收藏数', '保存', '收藏量'],
   share: ['分享', '分享数', '转发', '分享量'],
-  date: ['时间', '发布时间', '首次发布时间', '日期', '发布日期', '周期', '周', '月', '年'],
+  date: ['首次发布时间', '发布时间', '时间', '日期', '发布日期', '周期'],
   tags: ['标签', '自定义标签', '分类标签', '关键词', '话题', '分类']
 }
 
@@ -48,15 +48,8 @@ export function findColumnIndex(headers: string[], keywords: string[]): number {
         return i
       }
       
-      if (headerLower.includes(keywordLower) && !headerLower.includes('率') && !headerLower.includes('量') && keyword.length >= 2) {
-        return i
-      }
-      
       if (headerLower.includes(keywordLower) && keyword.length >= 2) {
-        const trimmedHeader = headerLower.replace(keywordLower, '').trim()
-        if (!trimmedHeader || ['量', '数', '率', '次', '值', '度', '数'].includes(trimmedHeader)) {
-          return i
-        }
+        return i
       }
     }
   }
@@ -262,9 +255,9 @@ function parseJsonData(jsonData: (string | number)[][]): Note[] {
   
   const usedColumns = new Set<number>()
   
-  const priorityFields = ['title', 'date', 'exposure', 'view', 'like', 'comment', 'collect', 'share', 'followers', 'type', 'clickRate', 'tags']
+  const fieldOrder = ['title', 'date', 'type', 'exposure', 'view', 'clickRate', 'like', 'comment', 'collect', 'share', 'followers', 'tags']
   
-  for (const field of priorityFields) {
+  for (const field of fieldOrder) {
     const keywords = COLUMN_KEYWORDS[field]
     const index = findColumnIndex(headers.map(h => h.original), keywords)
     if (index !== -1 && !usedColumns.has(index)) {
